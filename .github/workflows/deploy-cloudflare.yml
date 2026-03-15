@@ -98,11 +98,13 @@ jobs:
 
       - name: Deploy API worker
         working-directory: apps/api
-        run: >
-          npx wrangler deploy
-          --config wrangler.jsonc
-          --var CORS_ALLOWED_ORIGINS:"${API_ALLOWED_ORIGINS}"
-          --keep-vars
+        run: |
+          set -euo pipefail
+
+          npx wrangler deploy \
+            --config wrangler.jsonc \
+            --var "CORS_ALLOWED_ORIGINS:${API_ALLOWED_ORIGINS}" \
+            --keep-vars
 
       - name: Deploy web worker
         working-directory: apps/web

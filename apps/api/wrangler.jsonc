@@ -3,11 +3,18 @@
 	"main": "src/index.ts",
 	"compatibility_flags": ["nodejs_compat"],
 	"compatibility_date": "2026-03-15",
-	// Prefer a Hyperdrive binding in production if you add one.
-	// "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "<replace-with-hyperdrive-id>" }],
+	"hyperdrive": [
+		{
+			"binding": "HYPERDRIVE",
+			"id": "b08ac5c1673f4919bc6154717ae8ace3",
+			"localConnectionString": "postgresql://yardwatch:yardwatch123@localhost:5432/yardwatch"
+		}
+	],
+	"placement": {
+		"region": "aws:us-east-1"
+	},
 	"vars": {
 		"CORS_ALLOWED_ORIGINS": "http://localhost:3000",
-		"BETTER_AUTH_URL": "http://127.0.0.1:8788",
 	},
 	"observability": {
 		"enabled": true,
