@@ -1,7 +1,0 @@
-import{o as _}from"./BufferObject-CDtpXSrC.js";import{s as c}from"./Program-CUZzzJ4I.js";import{m as j,a as F}from"./Program-CUZzzJ4I.js";import"./index-BMXLsgY_.js";import{e as v}from"./ShaderCompiler-G2XYGDs6.js";import{d5 as w}from"./customElement-BX2jTu_k.js";import{h as C}from"./VertexArrayObject-CSeUMvyU.js";import{e as S}from"./ProgramTemplate-jVcA1Dg7.js";import"./main-TvvPjVNe.js";import"./memoryEstimations-2VPFIYEM.js";import"./VertexAttributeLocations-BKBPWuwF.js";class ${constructor(e){this._rctx=e,this._store=new Map}dispose(){this._store.forEach(e=>e.dispose()),this._store.clear()}acquire(e,r,t,n){const s=e+r+JSON.stringify(Array.from(t.entries())),o=this._store.get(s);if(o!=null)return o.ref(),o;const i=new c(this._rctx,e,r,t,n);return i.ref(),this._store.set(s,i),i}get test(){}}function p(f){const{options:e,value:r}=f;return typeof e[r]=="number"}function h(f){let e="";for(const r in f){const t=f[r];if(typeof t=="boolean")t&&(e+=`#define ${r}
-`);else if(typeof t=="number")e+=`#define ${r} ${t.toFixed()}
-`;else if(typeof t=="object")if(p(t)){const{value:n,options:s,namespace:o}=t,i=o?`${o}_`:"";for(const a in s)e+=`#define ${i}${a} ${s[a].toFixed()}
-`;e+=`#define ${r} ${i}${n}
-`}else{const n=t.options;let s=0;for(const o in n)e+=`#define ${n[o]} ${(s++).toFixed()}
-`;e+=`#define ${r} ${n[t.value]}
-`}}return e}export{_ as BufferObject,j as FramebufferObject,c as Program,$ as ProgramCache,F as Renderbuffer,v as ShaderCompiler,w as Texture,C as VertexArrayObject,S as createProgram,h as glslifyDefineMap};

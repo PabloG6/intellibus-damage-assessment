@@ -4,7 +4,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/../../.." && pwd)"
 
-pnpm --dir "${ROOT_DIR}" drizzle-kit:migrate
-pnpm --dir "${ROOT_DIR}" --filter @workspace/api run seed-users
+cd "${ROOT_DIR}"
+
+npm run drizzle-kit:migrate
+npm run seed-users --workspace @workspace/api
 
 echo "Database migrated and seeded"

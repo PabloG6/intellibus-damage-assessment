@@ -17,7 +17,7 @@
 		"cf-typegen": "wrangler types"
 	},
 	"dependencies": {
-		"@workspace/db": "workspace:*",
+		"@workspace/db": "*",
 		"@trpc/server": "^11.12.1",
 		"bcrypt": "^6.0.0",
 		"dotenv": "^17.3.1",

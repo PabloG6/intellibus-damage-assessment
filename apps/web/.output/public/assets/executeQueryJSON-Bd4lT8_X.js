@@ -1,1 +1,0 @@
-import{ce as a,w as s,cf as i}from"./customElement-BX2jTu_k.js";import{l as m}from"./query-F5mtacia.js";async function w(r,o,n,t){const c=await u(r,o,n,t);return a.fromJSON(c)}function u(r,o,n,t){const c=s(r),f={...n},e=i.from(o);return m(c,e,e.sourceSpatialReference,f,t)}export{u as n,w as s};

@@ -1,0 +1,55 @@
+experiment_name: "melissa_sample_001"
+experiment_dir: "experiments/melissa_sample_001"
+
+imagery:
+  raw_fn: ".maps/20251104b_RGB/20251104bC0780815w181845n.tif"
+  rgb_fn: ".maps/20251104b_RGB/20251104bC0780815w181845n.tif"
+  num_channels: 3
+  normalization_means:
+    - 0
+    - 0
+    - 0
+  normalization_stds:
+    - 255
+    - 255
+    - 255
+
+labels:
+  fn: "data/labels/melissa_sample_001.geojson"
+  classes:
+    - Background
+    - Building
+    - Damaged Building
+  buffer_in_meters: 0
+  class_to_buffer: Building
+  class_to_buffer_by: Background
+
+training:
+  learning_rate: 0.0001
+  max_epochs: 10
+  batch_size: 2
+  gpu_id: 0
+  log_dir: "logs/"
+  checkpoint_subdir: "checkpoints/"
+  use_constraint_loss: false
+  num_workers: 4
+  train_batches_per_epoch: 64
+  val_batches_per_epoch: 16
+  patch_size: 256
+
+inference:
+  output_subdir: "outputs/"
+  checkpoint_fn: "checkpoints/last.ckpt"
+  batch_size: 1
+  gpu_id: 0
+  patch_size: 1024
+  padding: 64
+  num_workers: 4
+
+local:
+  miniforge_dir: "/Users/pepperpotpoppins/miniforge3"
+  env_name: "yardwatch-bda"
+  bda_repo_dir: "/Users/pepperpotpoppins/nodejs/building-damage-assessment"
+  overture_release: "2026-02-18.0"
+  footprints_fn: "experiments/melissa_sample_001/outputs/overture_building_footprints.gpkg"
+  merged_output_fn: "experiments/melissa_sample_001/outputs/melissa_sample_001_building_damage.gpkg"

@@ -1,1 +1,0 @@
-import{_ as r}from"./main-TvvPjVNe.js";import{aC as n}from"./customElement-BX2jTu_k.js";let t=null;async function _(){return t||(t=o()),t}async function o(){const a=await r(()=>import("./bundle-Ddgqihk6.js"),[]);return await a.default({module_or_path:n("esri/libs/parquet/pkg/bundle_bg.wasm")}),a}export{_ as s};

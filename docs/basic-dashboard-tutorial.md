@@ -81,7 +81,7 @@ To build the dashboard shown in this tutorial, add these `shadcn` components:
 Run this from the repo root:
 
 ```bash
-pnpm dlx shadcn@latest add card badge table separator skeleton -c apps/web
+npx shadcn@latest add card badge table separator skeleton -c apps/web
 ```
 
 After installation, import them like this:
