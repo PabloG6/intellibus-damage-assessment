@@ -6,6 +6,7 @@
     "build": "npm run build --workspaces --if-present",
     "auth:schema:generate": "npm run auth:schema:generate --workspace @workspace/auth",
     "db:push:production": "bash ./scripts/push-postgres-to-production.sh",
+    "db:reconcile-auth": "npm run auth:reconcile --workspace @workspace/db",
     "dev": "concurrently -n web,api,auth -c blue,green,magenta \"npm run dev --workspace web\" \"npm run dev --workspace @workspace/api\" \"npm run dev --workspace auth\"",
     "drizzle-kit:generate": "npm run drizzle:generate --workspace @workspace/db",
     "drizzle-kit:migrate": "npm run drizzle:migrate --workspace @workspace/db",

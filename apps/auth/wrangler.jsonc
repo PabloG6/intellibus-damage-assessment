@@ -3,8 +3,19 @@
   "main": "src/index.ts",
   "compatibility_flags": ["nodejs_compat"],
   "compatibility_date": "2026-03-15",
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "b08ac5c1673f4919bc6154717ae8ace3",
+      "localConnectionString": "postgresql://yardwatch:yardwatch123@localhost:5432/yardwatch"
+    }
+  ],
+  "placement": {
+    "region": "aws:us-east-1"
+  },
   "dev": {
     "port": 8788,
+    "inspector_port": 9400,
   },
   "vars": {
     "ALLOWED_ORIGINS": "http://localhost:3000",

@@ -1,5 +1,5 @@
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
-import { Client, Pool } from "pg";
+import { Client, Pool, type ClientConfig, type PoolConfig } from "pg";
 import { schema } from "./db-schema";
 
 export type AppDb = NodePgDatabase<typeof schema>;
@@ -13,12 +13,38 @@ export const resolveConnectionString = (connectionString?: string | null) =>
   process.env.DATABASE_URL ??
   DEFAULT_DATABASE_URL;
 
+export const createPgConfig = (
+  connectionString: string,
+): ClientConfig | PoolConfig => {
+  const url = new URL(connectionString);
+  const sslMode = url.searchParams.get("sslmode");
+  const sslRootCert = url.searchParams.get("sslrootcert");
+
+  if (!sslMode && !sslRootCert) {
+    return { connectionString };
+  }
+
+  url.searchParams.delete("sslmode");
+  url.searchParams.delete("sslrootcert");
+
+  if (sslMode === "disable") {
+    return { connectionString: url.toString() };
+  }
+
+  return {
+    connectionString: url.toString(),
+    ssl: {
+      rejectUnauthorized: sslMode !== "require",
+    },
+  };
+};
+
 export const createDbClient = (connectionString: string) => {
-  return new Client({ connectionString });
+  return new Client(createPgConfig(connectionString));
 };
 
 export const createDbPool = (connectionString: string) => {
-  return new Pool({ connectionString });
+  return new Pool(createPgConfig(connectionString));
 };
 
 export const getPooledDb = (connectionString: string) => {
