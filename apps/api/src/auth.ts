@@ -1,3 +1,5 @@
+import { createAuth } from '@workspace/auth';
+import type { AppDb } from '@workspace/db';
 import type { WorkerEnv } from './env';
 
 export interface AuthIdentity {
@@ -7,14 +9,7 @@ export interface AuthIdentity {
 }
 
 const AUTH_HEADER_NAMES = ['cookie', 'authorization', 'origin', 'user-agent'] as const;
-const demoSessions = [
-	{
-		sessionId: 'demo-session',
-		userId: '1',
-		organizationId: 'org1',
-		token: 'demo-token',
-	},
-];
+
 export function buildAuthHeaders(request: Request): Headers {
 	const headers = new Headers();
 
@@ -29,33 +24,44 @@ export function buildAuthHeaders(request: Request): Headers {
 	return headers;
 }
 
-async function resolveSessionFromAuthSystem(headers: Headers, _env: WorkerEnv): Promise<AuthIdentity | null> {
-	const authHeader = headers.get('authorization');
+function parseTrustedOrigins(origins: string | undefined) {
+	return (
+		origins
+			?.split(',')
+			.map((origin) => origin.trim())
+			.filter(Boolean) ?? []
+	);
+}
 
-	if (!authHeader) {
+async function resolveSessionFromAuthSystem(request: Request, env: WorkerEnv, database: AppDb): Promise<AuthIdentity | null> {
+	if (!env.BETTER_AUTH_URL || !env.BETTER_AUTH_SECRET) {
 		return null;
 	}
 
-	const token = authHeader.replace('Bearer ', '');
+	const auth = createAuth({
+		baseURL: env.BETTER_AUTH_URL,
+		secret: env.BETTER_AUTH_SECRET,
+		database,
+		trustedOrigins: parseTrustedOrigins(env.CORS_ALLOWED_ORIGINS),
+	});
+	const session = await auth.api.getSession({
+		headers: buildAuthHeaders(request),
+	});
 
-	const session = demoSessions.find((s) => s.token === token);
-
-	if (!session) {
+	if (!session?.session || !session.user) {
 		return null;
 	}
 
 	return {
-		userId: session.userId,
-		sessionId: session.sessionId,
-		organizationId: session.organizationId,
+		userId: session.user.id,
+		sessionId: session.session.id,
+		organizationId: session.session.activeOrganizationId ?? null,
 	};
 }
 
-export async function resolveAuth(request: Request, env: WorkerEnv): Promise<AuthIdentity | null> {
-	const headers = buildAuthHeaders(request);
-
+export async function resolveAuth(request: Request, env: WorkerEnv, database: AppDb): Promise<AuthIdentity | null> {
 	try {
-		return await resolveSessionFromAuthSystem(headers, env);
+		return await resolveSessionFromAuthSystem(request, env, database);
 	} catch (error) {
 		console.warn('Failed to resolve auth session', error);
 		return null;

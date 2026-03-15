@@ -1,15 +1,13 @@
 import { drizzle, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import { Client, Pool } from "pg";
-import * as schema from "./schema";
+import { schema } from "./db-schema";
 
 export type AppDb = NodePgDatabase<typeof schema>;
 
 export const DEFAULT_DATABASE_URL =
   "postgres://yardwatch:yardwatch123@localhost:5432/yardwatch";
 
-export const resolveConnectionString = (
-  connectionString?: string | null,
-) =>
+export const resolveConnectionString = (connectionString?: string | null) =>
   connectionString ??
   process.env.CONTROL_PLANE_DATABASE_URL ??
   process.env.DATABASE_URL ??
@@ -41,3 +39,6 @@ export const getConnectedDb = async (connectionString: string) => {
     db: drizzle(client, { schema }),
   };
 };
+
+export const getControlPlaneDb = (connectionString: string) =>
+  getPooledDb(connectionString).db;

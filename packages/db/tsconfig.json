@@ -6,5 +6,5 @@
     "target": "ES2022",
     "types": ["node"]
   },
-  "include": ["drizzle.config.ts", "src/**/*.ts"]
+  "include": ["auth.schema.ts", "drizzle.config.ts", "src/**/*.ts"]
 }

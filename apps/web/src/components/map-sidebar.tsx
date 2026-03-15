@@ -1,13 +1,17 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
+import { Button } from "@workspace/ui/components/button";
 import type { DashboardOverview } from "@/lib/incidents";
 import {
   SEVERITY_BADGE,
   SEVERITY_DOT,
+  formatAddressResolution,
   formatBounds,
   formatLngLat,
   formatPercent,
   formatSeverity,
+  getDisplayAddress,
+  getRecommendedAction,
 } from "@/lib/incidents";
 
 function SectionLabel({
@@ -64,6 +68,11 @@ interface MapSidebarProps {
   selectedIncidentId: string | null;
   onSelectIncident: (incidentId: string) => void;
   onFitDataset: () => void;
+  onStartBriefing: () => void;
+  onStopBriefing: () => void;
+  isBriefingActive: boolean;
+  briefingIndex: number;
+  briefingTotal: number;
   isLoading: boolean;
   isError: boolean;
   errorMessage?: string | null;
@@ -74,6 +83,11 @@ export function MapSidebar({
   selectedIncidentId,
   onSelectIncident,
   onFitDataset,
+  onStartBriefing,
+  onStopBriefing,
+  isBriefingActive,
+  briefingIndex,
+  briefingTotal,
   isLoading,
   isError,
   errorMessage,
@@ -106,7 +120,7 @@ export function MapSidebar({
                   YardWatch
                 </p>
                 <p className="truncate text-[9px] text-muted-foreground">
-                  Melissa building damage
+                  Melissa claim triage
                 </p>
               </div>
             </div>
@@ -143,12 +157,31 @@ export function MapSidebar({
           <SectionLabel label="Dataset" />
 
           <div className="space-y-3 px-4 pb-3">
+            <Button
+              onClick={isBriefingActive ? onStopBriefing : onStartBriefing}
+              variant={isBriefingActive ? "destructive" : "default"}
+              className="w-full"
+            >
+              {isBriefingActive
+                ? `Stop Briefing (${briefingIndex + 1}/${briefingTotal})`
+                : "Start Briefing"}
+            </Button>
+
             <button
               onClick={onFitDataset}
               className="flex h-9 w-full items-center justify-center rounded-lg border border-border bg-input text-[12px] font-medium text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             >
               Fit Melissa extent
             </button>
+
+            <div className="flex items-center justify-between rounded-lg border border-border bg-muted px-3 py-2">
+              <span className="text-[10px] text-muted-foreground">
+                Top queue: {briefingTotal} homes
+              </span>
+              <span className="text-[10px] text-muted-foreground">
+                Priority: {overview?.stats.priority ?? (overview ? overview.stats.bySeverity.critical + overview.stats.bySeverity.high : 0)}
+              </span>
+            </div>
 
             <div className="grid grid-cols-2 gap-2">
               <div className="rounded-lg border border-border bg-muted px-3 py-2">
@@ -226,10 +259,16 @@ export function MapSidebar({
             }
           />
 
+          {!isLoading && !isError && overview?.incidents.length ? (
+            <p className="px-4 pb-2 text-[10px] text-muted-foreground/60">
+              Pick a detection to inspect the footprint, address match, and inspection priority.
+            </p>
+          ) : null}
+
           <div className="space-y-px px-3 pb-2">
             {isLoading ? (
               <p className="rounded-lg border border-dashed border-border px-3 py-4 text-[12px] text-muted-foreground">
-                Loading damage detections from the incidents API.
+                Loading prioritized detections from the incidents API.
               </p>
             ) : isError ? (
               <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-4 text-[12px] text-destructive">
@@ -263,7 +302,7 @@ export function MapSidebar({
                             {incident.label}
                           </p>
                           <p className="truncate text-[10px] text-muted-foreground">
-                            {formatLngLat(incident.centroid)}
+                            {getDisplayAddress(incident.address)}
                           </p>
                         </div>
                       </div>
@@ -330,6 +369,18 @@ export function MapSidebar({
 
                 <div className="divide-y divide-border">
                   {[
+                    {
+                      label: "Address",
+                      value: getDisplayAddress(selectedIncident.address),
+                    },
+                    {
+                      label: "Address source",
+                      value: formatAddressResolution(selectedIncident.address),
+                    },
+                    {
+                      label: "Recommended action",
+                      value: getRecommendedAction(selectedIncident.severity),
+                    },
                     { label: "Status", value: selectedIncident.status },
                     {
                       label: "Damage score",
@@ -360,7 +411,7 @@ export function MapSidebar({
               </>
             ) : (
               <div className="px-3 py-4 text-[12px] text-muted-foreground">
-                Pick a detection to inspect its polygon, confidence, and centroid.
+                Pick a detection to inspect the footprint, address match, and inspection priority.
               </div>
             )}
           </div>

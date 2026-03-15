@@ -1,0 +1,23 @@
+{
+  "name": "auth",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "start": "wrangler dev",
+    "cf-typegen": "wrangler types",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@workspace/auth": "*",
+    "@workspace/db": "*",
+    "effect": "^3.19.19",
+    "hono": "^4.12.8"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "wrangler": "^4.73.0"
+  }
+}

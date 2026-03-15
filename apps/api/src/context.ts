@@ -5,7 +5,7 @@ import type { Database } from './db';
 import type { WorkerEnv } from './env';
 
 export async function createContext(opts: FetchCreateContextFnOptions, env: WorkerEnv, db: Database) {
-	const auth = await resolveAuth(opts.req, env);
+	const auth = await resolveAuth(opts.req, env, db);
 
 	return {
 		req: opts.req,

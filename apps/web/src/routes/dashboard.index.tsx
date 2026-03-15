@@ -1,13 +1,31 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import type { GeoJSONSource, LngLatBoundsLike, Map as MapboxMap, Popup } from "mapbox-gl";
+import type { GeoJSONSource, LngLatBoundsLike, Map as MapboxMap } from "mapbox-gl";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@workspace/ui/components/card";
 import { MapSidebar } from "../components/map-sidebar";
 
 import "mapbox-gl/dist/mapbox-gl.css";
 
 import type { DashboardIncident, DashboardOverview } from "@/lib/incidents";
-import { SEVERITY_FILL, formatPercent, formatSeverity } from "@/lib/incidents";
+import {
+  estimateIncidentDamage,
+  formatUsd,
+  SEVERITY_FILL,
+  formatAddressResolution,
+  formatPercent,
+  formatSeverity,
+  getFeatureGeometry,
+  getBriefingQueue,
+  getDisplayAddress,
+  getRecommendedAction,
+} from "@/lib/incidents";
 import { env } from "@/lib/env";
 import { useTRPC } from "@/lib/trpc";
 
@@ -24,6 +42,8 @@ const INCIDENTS_OUTLINE_LAYER_ID = "incidents-outline";
 const INCIDENTS_SELECTED_LAYER_ID = "incidents-selected";
 const DATASET_PADDING = { top: 48, right: 48, bottom: 48, left: 336 };
 const INCIDENT_PADDING = { top: 72, right: 72, bottom: 72, left: 336 };
+const CARD_MARGIN = 24;
+const SIDEBAR_CLEARANCE = 324;
 
 function maskToken(token: string) {
   if (!token) {
@@ -44,6 +64,34 @@ function toMapboxBounds(bounds: [number, number, number, number]): LngLatBoundsL
   ];
 }
 
+function positionIncidentCard(
+  map: MapboxMap,
+  container: HTMLDivElement,
+  card: HTMLDivElement,
+  incident: DashboardIncident,
+) {
+  const projected = map.project(incident.centroid);
+  const cardWidth = card.offsetWidth;
+  const cardHeight = card.offsetHeight;
+  const containerWidth = container.clientWidth;
+  const containerHeight = container.clientHeight;
+  const minLeft = Math.min(
+    containerWidth - cardWidth / 2 - CARD_MARGIN,
+    SIDEBAR_CLEARANCE + cardWidth / 2,
+  );
+  const clampedLeft = Math.min(
+    Math.max(projected.x, minLeft),
+    containerWidth - cardWidth / 2 - CARD_MARGIN,
+  );
+  const clampedTop = Math.min(
+    Math.max(projected.y, cardHeight + CARD_MARGIN),
+    containerHeight - CARD_MARGIN,
+  );
+
+  card.style.left = `${clampedLeft}px`;
+  card.style.top = `${clampedTop}px`;
+}
+
 function DashboardPage() {
   const trpc = useTRPC();
   const overviewQuery = useQuery(trpc.incidents.overview.queryOptions());
@@ -51,6 +99,10 @@ function DashboardPage() {
   const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(null);
   const [selectionSerial, setSelectionSerial] = useState(0);
   const [fitExtentSerial, setFitExtentSerial] = useState(0);
+  const [isBriefingActive, setIsBriefingActive] = useState(false);
+  const [briefingIndex, setBriefingIndex] = useState(0);
+
+  const briefingQueue = overview ? getBriefingQueue(overview.incidents) : [];
 
   useEffect(() => {
     if (!selectedIncidentId && overview?.incidents[0]) {
@@ -58,18 +110,51 @@ function DashboardPage() {
     }
   }, [overview, selectedIncidentId]);
 
+  useEffect(() => {
+    if (!isBriefingActive || briefingQueue.length === 0) return;
+
+    const activeIncident = briefingQueue[briefingIndex];
+    if (activeIncident && activeIncident.id !== selectedIncidentId) {
+      setSelectedIncidentId(activeIncident.id);
+      setSelectionSerial((value) => value + 1);
+    }
+  }, [briefingIndex, briefingQueue, isBriefingActive, selectedIncidentId]);
+
   const selectedIncident =
     overview?.incidents.find((incident) => incident.id === selectedIncidentId) ??
     overview?.incidents[0] ??
     null;
 
   function handleSelectIncident(incidentId: string) {
+    setIsBriefingActive(false);
     setSelectedIncidentId(incidentId);
     setSelectionSerial((current) => current + 1);
   }
 
   function handleFitDataset() {
     setFitExtentSerial((current) => current + 1);
+  }
+
+  function handleStartBriefing() {
+    if (briefingQueue.length === 0) return;
+    setBriefingIndex(0);
+    setIsBriefingActive(true);
+    setSelectedIncidentId(briefingQueue[0].id);
+    setSelectionSerial((current) => current + 1);
+  }
+
+  function handleStopBriefing() {
+    setIsBriefingActive(false);
+  }
+
+  function handleBriefingPrev() {
+    if (!isBriefingActive || briefingIndex <= 0) return;
+    setBriefingIndex((i) => i - 1);
+  }
+
+  function handleBriefingNext() {
+    if (!isBriefingActive || briefingIndex >= briefingQueue.length - 1) return;
+    setBriefingIndex((i) => i + 1);
   }
 
   return (
@@ -84,6 +169,11 @@ function DashboardPage() {
           onSelectIncident={handleSelectIncident}
           isQueryPending={overviewQuery.isPending}
           queryErrorMessage={overviewQuery.error?.message}
+          isBriefingActive={isBriefingActive}
+          briefingQueue={briefingQueue}
+          briefingIndex={briefingIndex}
+          onBriefingPrev={handleBriefingPrev}
+          onBriefingNext={handleBriefingNext}
         />
       </div>
 
@@ -92,6 +182,11 @@ function DashboardPage() {
         selectedIncidentId={selectedIncidentId}
         onSelectIncident={handleSelectIncident}
         onFitDataset={handleFitDataset}
+        onStartBriefing={handleStartBriefing}
+        onStopBriefing={handleStopBriefing}
+        isBriefingActive={isBriefingActive}
+        briefingIndex={briefingIndex}
+        briefingTotal={briefingQueue.length}
         isLoading={overviewQuery.isPending}
         isError={overviewQuery.isError}
         errorMessage={overviewQuery.error?.message}
@@ -113,6 +208,11 @@ interface MapCanvasProps {
   onSelectIncident: (incidentId: string) => void;
   isQueryPending: boolean;
   queryErrorMessage?: string;
+  isBriefingActive: boolean;
+  briefingQueue: DashboardIncident[];
+  briefingIndex: number;
+  onBriefingPrev: () => void;
+  onBriefingNext: () => void;
 }
 
 function MapCanvas({
@@ -124,16 +224,24 @@ function MapCanvas({
   onSelectIncident,
   isQueryPending,
   queryErrorMessage,
+  isBriefingActive,
+  briefingQueue,
+  briefingIndex,
+  onBriefingPrev,
+  onBriefingNext,
 }: MapCanvasProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapboxMap | null>(null);
-  const mapboxModuleRef = useRef<typeof import("mapbox-gl").default | null>(null);
-  const popupRef = useRef<Popup | null>(null);
+  const popupCardRef = useRef<HTMLDivElement | null>(null);
   const hasLayerHandlersRef = useRef(false);
   const hasFittedDatasetRef = useRef(false);
   const onSelectIncidentRef = useRef(onSelectIncident);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const selectedGeometry = getFeatureGeometry(overview, selectedIncident?.id ?? null);
+  const damageEstimate = selectedIncident
+    ? estimateIncidentDamage(selectedIncident, selectedGeometry)
+    : null;
 
   onSelectIncidentRef.current = onSelectIncident;
 
@@ -162,7 +270,6 @@ function MapCanvas({
         }
 
         mapboxgl.accessToken = env.VITE_MAP_BOX_API_KEY;
-        mapboxModuleRef.current = mapboxgl;
 
         const map = new mapboxgl.Map({
           container: mapContainerRef.current,
@@ -258,8 +365,6 @@ function MapCanvas({
         window.clearTimeout(resizeTimeoutId);
       }
       resizeObserver?.disconnect();
-      popupRef.current?.remove();
-      popupRef.current = null;
       mapRef.current?.remove();
       mapRef.current = null;
       hasLayerHandlersRef.current = false;
@@ -383,24 +488,9 @@ function MapCanvas({
 
   useEffect(() => {
     const map = mapRef.current;
-    const mapboxgl = mapboxModuleRef.current;
-    if (!map || !mapboxgl || !selectedIncident || selectionSerial === 0) {
+    if (!map || !selectedIncident || selectionSerial === 0) {
       return;
     }
-
-    popupRef.current?.remove();
-    popupRef.current = new mapboxgl.Popup({
-      offset: 18,
-      closeButton: false,
-      closeOnClick: false,
-    })
-      .setLngLat(selectedIncident.centroid)
-      .setHTML(
-        `<strong>${selectedIncident.label}</strong><br />${formatSeverity(
-          selectedIncident.severity,
-        )} · ${formatPercent(selectedIncident.damagePct0m)}`,
-      )
-      .addTo(map);
 
     map.fitBounds(toMapboxBounds(selectedIncident.bbox), {
       padding: INCIDENT_PADDING,
@@ -408,6 +498,39 @@ function MapCanvas({
       maxZoom: 18,
     });
   }, [selectedIncident, selectionSerial]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const container = mapContainerRef.current;
+    const card = popupCardRef.current;
+    if (!map || !container || !card || status !== "ready" || !selectedIncident) {
+      return;
+    }
+    const activeMap = map;
+
+    function syncCardPosition() {
+      if (!popupCardRef.current || !mapContainerRef.current || !selectedIncident) {
+        return;
+      }
+
+      positionIncidentCard(
+        activeMap,
+        mapContainerRef.current,
+        popupCardRef.current,
+        selectedIncident,
+      );
+    }
+
+    syncCardPosition();
+
+    activeMap.on("move", syncCardPosition);
+    activeMap.on("resize", syncCardPosition);
+
+    return () => {
+      activeMap.off("move", syncCardPosition);
+      activeMap.off("resize", syncCardPosition);
+    };
+  }, [selectedIncident, status]);
 
   const overlayMessage =
     status === "error"
@@ -451,11 +574,162 @@ function MapCanvas({
         </div>
       ) : null}
 
+      {status === "ready" && !overlayMessage && selectedIncident ? (
+        <div
+          ref={popupCardRef}
+          className="absolute z-20 w-80 max-w-[calc(100vw-1.5rem)] -translate-x-1/2 -translate-y-[calc(100%+1rem)]"
+        >
+          <Card className="border-white/10 bg-background/92 shadow-[0_20px_70px_-35px_rgba(8,15,32,0.95)]">
+            <CardHeader className="pb-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground/65">
+                    {isBriefingActive ? "Claim Triage Tour" : "Focused Detection"}
+                  </p>
+                  <CardTitle className="mt-2 truncate text-base">
+                    {getDisplayAddress(selectedIncident.address)}
+                  </CardTitle>
+                  <CardDescription className="mt-1">
+                    {selectedIncident.id}
+                  </CardDescription>
+                </div>
+                <span
+                  className="inline-flex rounded-full border border-border/70 bg-muted px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-foreground"
+                  style={{ color: SEVERITY_FILL[selectedIncident.severity] }}
+                >
+                  {formatSeverity(selectedIncident.severity)}
+                </span>
+              </div>
+            </CardHeader>
+
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-3 gap-2">
+                <MetricTile
+                  label="Damage"
+                  value={formatPercent(selectedIncident.damagePct0m)}
+                />
+                <MetricTile
+                  label="10m Context"
+                  value={formatPercent(selectedIncident.damagePct10m)}
+                />
+                <MetricTile
+                  label="Built"
+                  value={formatPercent(selectedIncident.builtPct0m)}
+                />
+              </div>
+
+              {damageEstimate ? (
+                <div className="rounded-2xl border border-border/70 bg-muted/60 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground/65">
+                        Estimated Loss
+                      </p>
+                      <p className="mt-1 text-base font-semibold text-foreground">
+                        {formatUsd(damageEstimate.estimatedLossUsd)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground/65">
+                        Loss Ratio
+                      </p>
+                      <p className="mt-1 text-sm font-medium text-foreground">
+                        {formatPercent(damageEstimate.lossRatio)}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="mt-2 text-[10px] leading-4 text-muted-foreground">
+                    Jamaica-normalized demo estimate based on roughly{" "}
+                    {Math.round(damageEstimate.footprintSqFt).toLocaleString("en-US")} sq ft of
+                    footprint area.
+                  </p>
+                </div>
+              ) : null}
+
+              <div className="rounded-2xl border border-border/70 bg-muted/60 p-3 space-y-2">
+                {(() => {
+                  const queueIndex = briefingQueue.findIndex((i) => i.id === selectedIncident.id);
+                  return queueIndex >= 0 ? (
+                    <div className="flex items-center justify-between gap-3 text-[11px]">
+                      <span className="text-muted-foreground">Queue Rank</span>
+                      <span className="font-medium text-foreground">
+                        {queueIndex + 1} of {briefingQueue.length}
+                      </span>
+                    </div>
+                  ) : null;
+                })()}
+                <div className="flex items-center justify-between gap-3 text-[11px]">
+                  <span className="text-muted-foreground">Recommended Action</span>
+                  <span className="font-medium text-foreground">
+                    {getRecommendedAction(selectedIncident.severity)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3 text-[11px]">
+                  <span className="text-muted-foreground">Address Confidence</span>
+                  <span className="font-medium text-foreground">
+                    {formatAddressResolution(selectedIncident.address)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3 text-[11px]">
+                  <span className="text-muted-foreground">Status</span>
+                  <span className="font-medium capitalize text-foreground">
+                    {selectedIncident.status}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3 text-[11px]">
+                  <span className="text-muted-foreground">Centroid</span>
+                  <span className="font-mono text-foreground">
+                    {selectedIncident.centroid[1].toFixed(4)}, {selectedIncident.centroid[0].toFixed(4)}
+                  </span>
+                </div>
+              </div>
+
+              {isBriefingActive ? (
+                <div className="flex items-center justify-between rounded-2xl border border-border/70 bg-muted/60 px-1.5 py-1">
+                  <button
+                    onClick={onBriefingPrev}
+                    disabled={briefingIndex <= 0}
+                    className="flex h-7 w-7 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
+                    aria-label="Previous detection"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                      <path d="M8.5 3L4.5 7L8.5 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                  <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+                    {briefingIndex + 1} / {briefingQueue.length}
+                  </span>
+                  <button
+                    onClick={onBriefingNext}
+                    disabled={briefingIndex >= briefingQueue.length - 1}
+                    className="flex h-7 w-7 items-center justify-center rounded-xl text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground disabled:pointer-events-none disabled:opacity-30"
+                    aria-label="Next detection"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+                      <path d="M5.5 3L9.5 7L5.5 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
+
       <div className="absolute bottom-8 right-8 rounded-full border border-white/10 bg-black/30 px-3 py-1.5 backdrop-blur-md">
         <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-white/75">
           Melissa polygon overlay
         </p>
       </div>
+    </div>
+  );
+}
+
+function MetricTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-border/70 bg-muted/60 px-3 py-2">
+      <p className="text-[9px] uppercase tracking-[0.18em] text-muted-foreground/65">{label}</p>
+      <p className="mt-1 text-sm font-semibold text-foreground">{value}</p>
     </div>
   );
 }
@@ -470,7 +744,13 @@ function StatsBar({
   const stats = overview
     ? [
         { label: "detections", value: overview.stats.total.toString() },
-        { label: "damaged", value: overview.stats.damaged.toString() },
+        {
+          label: "priority",
+          value: (
+            overview.stats.priority ??
+            overview.stats.bySeverity.critical + overview.stats.bySeverity.high
+          ).toString(),
+        },
         {
           label: "critical",
           value: overview.stats.bySeverity.critical.toString(),
@@ -479,7 +759,7 @@ function StatsBar({
       ]
     : [
         { label: "detections", value: "--" },
-        { label: "damaged", value: "--" },
+        { label: "priority", value: "--" },
         { label: "critical", value: "--", critical: true },
       ];
 

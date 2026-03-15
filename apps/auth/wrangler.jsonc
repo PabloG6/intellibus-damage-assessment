@@ -1,0 +1,16 @@
+{
+  "name": "yardwatch-auth",
+  "main": "src/index.ts",
+  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_date": "2026-03-15",
+  "dev": {
+    "port": 8788,
+  },
+  "vars": {
+    "ALLOWED_ORIGINS": "http://localhost:3000",
+    "BETTER_AUTH_URL": "http://127.0.0.1:8788",
+  },
+  "observability": {
+    "enabled": true,
+  },
+}

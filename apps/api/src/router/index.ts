@@ -18,6 +18,8 @@ export const appRouter = router({
 
 export type AppRouter = typeof appRouter;
 export type {
+  IncidentAddress,
+  IncidentAddressResolution,
   IncidentBounds,
   IncidentCentroid,
   IncidentFeatureProperties,

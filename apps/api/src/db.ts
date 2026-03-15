@@ -7,7 +7,9 @@ export type Database = AppDb;
 const dbResources = new Map<string, ReturnType<typeof getPooledDb>>();
 
 export function getDatabaseUrl(env?: WorkerEnv) {
-	return resolveConnectionString(env?.CONTROL_PLANE_DATABASE_URL ?? env?.DATABASE_URL);
+	return resolveConnectionString(
+		env?.HYPERDRIVE?.connectionString ?? env?.CONTROL_PLANE_DATABASE_URL ?? env?.DATABASE_URL,
+	);
 }
 
 function getDbResources(env?: WorkerEnv) {

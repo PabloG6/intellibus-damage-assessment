@@ -61,7 +61,11 @@ export const incidents = pgTable("incidents", {
   unknownPct: doublePrecision("unknown_pct").notNull(),
   damaged: boolean("damaged").notNull(),
   severity: text("severity").notNull(),
+  formattedAddress: text("formatted_address"),
+  placeId: text("place_id"),
+  addressResolution: text("address_resolution").notNull().default("missing"),
   importedAt: timestamp("imported_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
+  enrichedAt: timestamp("enriched_at", { withTimezone: true }),
 });

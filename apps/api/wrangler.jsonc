@@ -2,9 +2,12 @@
 	"name": "yardwatch-api",
 	"main": "src/index.ts",
 	"compatibility_flags": ["nodejs_compat"],
-	"compatibility_date": "2026-03-10",
+	"compatibility_date": "2026-03-15",
+	// Prefer a Hyperdrive binding in production if you add one.
+	// "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "<replace-with-hyperdrive-id>" }],
 	"vars": {
 		"CORS_ALLOWED_ORIGINS": "http://localhost:3000",
+		"BETTER_AUTH_URL": "http://127.0.0.1:8788",
 	},
 	"observability": {
 		"enabled": true,

@@ -2,7 +2,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Effect } from "effect";
 import type { Client } from "pg";
 import { createDbClient, type AppDb } from "./client";
-import * as schema from "./schema";
+import { schema } from "./db-schema";
 
 interface DbResource {
   client: Client;
@@ -36,3 +36,5 @@ export const withDbEffect = <A, E>(
   Effect.scoped(
     Effect.flatMap(makeDbResource(connectionString), ({ db }) => run(db)),
   );
+
+export const withControlPlaneDbEffect = withDbEffect;

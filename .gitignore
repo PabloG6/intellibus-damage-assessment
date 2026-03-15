@@ -23,6 +23,7 @@ coverage/
 *.gpkg-wal
 /scripts/__pycache__/
 /apps/web/.output/
+.wrangler/
 
 # =========================
 # Environment Variables

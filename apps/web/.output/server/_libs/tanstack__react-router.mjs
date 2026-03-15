@@ -115,7 +115,6 @@ function useRouterState(opts) {
 }
 const REACT_USE = "use";
 const reactUse = React[REACT_USE];
-const useLayoutEffect = typeof window !== "undefined" ? reactExports.useLayoutEffect : reactExports.useEffect;
 function useForwardedRef(ref) {
   const innerRef = reactExports.useRef(null);
   reactExports.useImperativeHandle(ref, () => innerRef.current, []);
@@ -622,18 +621,6 @@ function useNavigate(_defaultOpts) {
     },
     [_defaultOpts?.from, router]
   );
-}
-function Navigate(props) {
-  const router = useRouter();
-  const navigate = useNavigate();
-  const previousPropsRef = reactExports.useRef(null);
-  useLayoutEffect(() => {
-    if (previousPropsRef.current !== props) {
-      navigate(props);
-      previousPropsRef.current = props;
-    }
-  }, [router, props, navigate]);
-  return null;
 }
 function useRouteContext(opts) {
   return useMatch({
@@ -1461,7 +1448,7 @@ const Scripts = () => {
 };
 export {
   HeadContent as H,
-  Navigate as N,
+  Link as L,
   Outlet as O,
   RouterProvider as R,
   Scripts as S,

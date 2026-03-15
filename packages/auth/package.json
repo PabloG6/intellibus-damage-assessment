@@ -1,0 +1,28 @@
+{
+  "name": "@workspace/auth",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./client": "./src/client.ts"
+  },
+  "scripts": {
+    "auth:schema:generate": "better-auth generate --config ./better-auth.config.ts --output ../db/auth.schema.ts --yes",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@better-auth/api-key": "1.5.5",
+    "@better-auth/core": "1.5.5",
+    "@better-auth/drizzle-adapter": "1.5.5",
+    "@better-auth/utils": "0.3.1",
+    "better-auth": "1.5.5"
+  },
+  "devDependencies": {
+    "@better-auth/cli": "1.4.21",
+    "@workspace/db": "*",
+    "typescript": "^5.9.3"
+  }
+}
