@@ -3,7 +3,8 @@
 	"version": "0.0.0",
 	"private": true,
 	"exports": {
-		"./router": "./src/router/index.ts"
+		"./router": "./src/router/index.ts",
+		"./network": "./src/network.ts"
 	},
 	"scripts": {
 		"deploy": "wrangler deploy",

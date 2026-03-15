@@ -1,0 +1,20 @@
+{
+  "name": "realtime",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "partykit dev src/server.ts --config partykit.json --port 1999",
+    "deploy": "partykit deploy src/server.ts --config partykit.json",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@trpc/client": "^11.12.1",
+    "@workspace/api": "*",
+    "partykit": "^0.0.115",
+    "superjson": "^2.2.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  }
+}

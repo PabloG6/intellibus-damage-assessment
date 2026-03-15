@@ -221,7 +221,7 @@ Add:
   - `Start Briefing`
   - when active, switch to `Stop Briefing`
 - secondary button:
-  - keep `Fit Melissa extent`
+  - keep `Fit dataset bounds`
 - small helper row:
   - `Top queue: 10 homes`
   - `Priority: {overview.stats.priority}`

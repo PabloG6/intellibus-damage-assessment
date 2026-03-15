@@ -14,7 +14,10 @@
 		"region": "aws:us-east-1"
 	},
 	"vars": {
-		"CORS_ALLOWED_ORIGINS": "http://localhost:3000",
+		"CORS_ALLOWED_ORIGINS": "http://localhost:3000,http://localhost:3001",
+		"PARTYKIT_URL": "http://127.0.0.1:1999",
+		"PARTYKIT_SERVICE_SECRET": "yardwatch-local-service-secret",
+		"REALTIME_TOKEN_SECRET": "yardwatch-local-realtime-secret"
 	},
 	"observability": {
 		"enabled": true,

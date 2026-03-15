@@ -18,7 +18,7 @@
     "inspector_port": 9400,
   },
   "vars": {
-    "ALLOWED_ORIGINS": "http://localhost:3000",
+    "ALLOWED_ORIGINS": "http://localhost:3000,http://localhost:3001",
     "BETTER_AUTH_URL": "http://127.0.0.1:8788",
   },
   "observability": {

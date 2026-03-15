@@ -1,0 +1,44 @@
+{
+  "name": "reporter",
+  "version": "0.0.1",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "vite dev --port 3001",
+    "build": "node --max-old-space-size=8192 ../../node_modules/vite/bin/vite.js build",
+    "build:cloudflare": "NITRO_PRESET=cloudflare_module NITRO_COMPATIBILITY_DATE=2026-03-15 node --max-old-space-size=8192 ../../node_modules/vite/bin/vite.js build",
+    "preview:cloudflare": "npm run build:cloudflare && wrangler dev --config ./.output/server/wrangler.json",
+    "deploy": "npm run build:cloudflare && wrangler deploy --config ./.output/server/wrangler.json",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.1.18",
+    "@tanstack/react-form": "^1.28.5",
+    "@tanstack/react-query": "^5.90.21",
+    "@tanstack/react-router": "^1.132.0",
+    "@tanstack/react-start": "^1.132.0",
+    "@tanstack/router-plugin": "^1.132.0",
+    "@trpc/client": "^11.12.1",
+    "@workspace/api": "*",
+    "@workspace/auth": "*",
+    "@workspace/ui": "*",
+    "nitro": "latest",
+    "partysocket": "^1.1.16",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "superjson": "^2.2.2",
+    "tailwindcss": "^4.1.18",
+    "vite-tsconfig-paths": "^5.1.4",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/node": "^25.1.0",
+    "@types/react": "^19.2.10",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "typescript": "^5.9.3",
+    "vite": "^7.2.4",
+    "wrangler": "^4.73.0"
+  }
+}

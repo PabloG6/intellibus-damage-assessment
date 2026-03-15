@@ -1,0 +1,4 @@
+const tsrStartManifest = () => ({ "routes": { "__root__": { "filePath": "/Users/pepperpotpoppins/nodejs/yardWatch/apps/reporter/src/routes/__root.tsx", "children": ["/", "/login", "/signup"], "preloads": ["/assets/main-CVCE1Vcl.js"] }, "/": { "filePath": "/Users/pepperpotpoppins/nodejs/yardWatch/apps/reporter/src/routes/index.tsx", "preloads": ["/assets/index-1w4j56s3.js", "/assets/auth-client-CWcA14gP.js"] }, "/login": { "filePath": "/Users/pepperpotpoppins/nodejs/yardWatch/apps/reporter/src/routes/login.tsx", "preloads": ["/assets/login-BuAzjZ4v.js", "/assets/reporter-auth-screen-7s8XGmTr.js", "/assets/auth-client-CWcA14gP.js"] }, "/signup": { "filePath": "/Users/pepperpotpoppins/nodejs/yardWatch/apps/reporter/src/routes/signup.tsx", "preloads": ["/assets/signup-BxC2_qvC.js", "/assets/reporter-auth-screen-7s8XGmTr.js", "/assets/auth-client-CWcA14gP.js"] } }, "clientEntry": "/assets/main-CVCE1Vcl.js" });
+export {
+  tsrStartManifest
+};

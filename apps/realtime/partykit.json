@@ -1,0 +1,12 @@
+{
+  "$schema": "https://www.partykit.io/schema.json",
+  "name": "yardwatch-realtime",
+  "main": "src/server.ts",
+  "port": 1999,
+  "compatibilityDate": "2026-03-15",
+  "vars": {
+    "API_URL": "http://127.0.0.1:8787",
+    "PARTYKIT_SERVICE_SECRET": "yardwatch-local-service-secret",
+    "REALTIME_TOKEN_SECRET": "yardwatch-local-realtime-secret"
+  }
+}

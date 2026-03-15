@@ -7,7 +7,10 @@ import type { AppRouter } from '../src/router';
 
 const ALLOWED_ORIGIN = 'http://localhost:3000';
 
-function createTestClient(origin = ALLOWED_ORIGIN) {
+function createTestClient(
+	origin = ALLOWED_ORIGIN,
+	extraHeaders?: Record<string, string>,
+) {
 	return createTRPCProxyClient<AppRouter>({
 		links: [
 			httpBatchLink({
@@ -16,6 +19,9 @@ function createTestClient(origin = ALLOWED_ORIGIN) {
 				fetch(url, options) {
 					const headers = new Headers(options?.headers);
 					headers.set('origin', origin);
+					for (const [key, value] of Object.entries(extraHeaders ?? {})) {
+						headers.set(key, value);
+					}
 
 					return SELF.fetch(url, {
 						...(options ?? {}),
@@ -80,6 +86,51 @@ describe('tRPC worker', () => {
 				code: 'UNAUTHORIZED',
 			},
 			message: 'Missing user identity',
+		});
+	});
+
+	it('guards reporter registration behind an authenticated session', async () => {
+		const client = createTestClient();
+
+		await expect(
+			client.network.upsertMine.mutate({
+				label: 'Melissa Health Centre',
+				facilityType: 'hospital',
+				areaLabel: 'Melissa corridor',
+				lngLat: [-78.1313, 18.3072],
+			}),
+		).rejects.toMatchObject({
+			data: {
+				code: 'UNAUTHORIZED',
+			},
+		});
+	});
+
+	it('guards realtime config behind an authenticated session', async () => {
+		const client = createTestClient();
+
+		await expect(client.network.realtimeConfig.query()).rejects.toMatchObject({
+			data: {
+				code: 'UNAUTHORIZED',
+			},
+		});
+	});
+
+	it('rejects ingestPresence without the shared PartyKit service secret', async () => {
+		const client = createTestClient();
+
+		await expect(
+			client.network.ingestPresence.mutate({
+				probeId: 'probe-melissa-health',
+				status: 'online',
+				lastSeen: new Date().toISOString(),
+				uptimePct: 0.5,
+			}),
+		).rejects.toMatchObject({
+			data: {
+				code: 'UNAUTHORIZED',
+			},
+			message: 'Invalid service credentials',
 		});
 	});
 });

@@ -11,6 +11,9 @@ export interface WorkerEnv {
 	DATABASE_URL?: string;
 	GOOGLE_MAPS_API_KEY?: string;
 	HYPERDRIVE?: HyperdriveBinding;
+	PARTYKIT_SERVICE_SECRET?: string;
+	PARTYKIT_URL?: string;
+	REALTIME_TOKEN_SECRET?: string;
 }
 
 export function resolveGoogleMapsApiKey(env?: WorkerEnv) {

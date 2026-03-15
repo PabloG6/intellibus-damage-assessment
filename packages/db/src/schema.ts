@@ -1,14 +1,17 @@
 import {
   boolean,
   doublePrecision,
+  index,
   integer,
   jsonb,
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   varchar,
 } from "drizzle-orm/pg-core";
 import type { MultiPolygon } from "geojson";
+import { user } from "../auth.schema";
 
 export const users = pgTable("users", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
@@ -69,3 +72,35 @@ export const incidents = pgTable("incidents", {
     .defaultNow(),
   enrichedAt: timestamp("enriched_at", { withTimezone: true }),
 });
+
+export const networkProbes = pgTable(
+  "network_probes",
+  {
+    id: text("id").primaryKey(),
+    ownerUserId: text("owner_user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    label: text("label").notNull(),
+    facilityType: text("facility_type").notNull(),
+    lng: doublePrecision("lng").notNull(),
+    lat: doublePrecision("lat").notNull(),
+    areaLabel: text("area_label").notNull(),
+    status: text("status").notNull().default("offline"),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+    lastStatusChangeAt: timestamp("last_status_change_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    uptimePct: doublePrecision("uptime_pct").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    uniqueIndex("network_probes_owner_user_uidx").on(table.ownerUserId),
+    index("network_probes_status_idx").on(table.status),
+  ],
+);

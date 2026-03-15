@@ -1,5 +1,6 @@
 import { demoRouter } from './demo';
 import { incidentsRouter } from './incidents';
+import { networkRouter } from './network';
 import { sessionRouter } from './session';
 
 import { publicProcedure, router } from '../trpc';
@@ -13,6 +14,7 @@ export const appRouter = router({
 	}),
 	demo: demoRouter,
 	incidents: incidentsRouter,
+	network: networkRouter,
 	session: sessionRouter,
 });
 

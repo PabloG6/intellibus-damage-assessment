@@ -28,6 +28,15 @@ import {
 } from "@/lib/incidents";
 import { env } from "@/lib/env";
 import { useTRPC } from "@/lib/trpc";
+import type { SidebarMode, NetworkProbe } from "@/lib/network-probes";
+import {
+  PROBE_STATUS_BADGE,
+  formatFacilityType,
+  formatLastSeen,
+  formatProbeStatus,
+  formatUptimePct,
+} from "@/lib/network-probes";
+import { useNetworkProbes } from "@/lib/use-network-probes";
 
 export const Route = createFileRoute("/dashboard/")({
   component: DashboardPage,
@@ -40,6 +49,10 @@ const INCIDENTS_SOURCE_ID = "incidents";
 const INCIDENTS_FILL_LAYER_ID = "incidents-fill";
 const INCIDENTS_OUTLINE_LAYER_ID = "incidents-outline";
 const INCIDENTS_SELECTED_LAYER_ID = "incidents-selected";
+const PROBES_SOURCE_ID = "network-probes";
+const PROBES_PULSE_LAYER_ID = "probes-pulse";
+const PROBES_CIRCLE_LAYER_ID = "probes-circle";
+const PROBES_LABEL_LAYER_ID = "probes-label";
 const DATASET_PADDING = { top: 48, right: 48, bottom: 48, left: 336 };
 const INCIDENT_PADDING = { top: 72, right: 72, bottom: 72, left: 336 };
 const CARD_MARGIN = 24;
@@ -102,7 +115,9 @@ function DashboardPage() {
   const [isBriefingActive, setIsBriefingActive] = useState(false);
   const [briefingIndex, setBriefingIndex] = useState(0);
   const [isPopupDismissed, setIsPopupDismissed] = useState(false);
+  const [sidebarMode, setSidebarMode] = useState<SidebarMode>("housing");
 
+  const networkProbes = useNetworkProbes(sidebarMode);
   const briefingQueue = overview ? getBriefingQueue(overview.incidents) : [];
 
   useEffect(() => {
@@ -179,10 +194,18 @@ function DashboardPage() {
           onBriefingNext={handleBriefingNext}
           isPopupDismissed={isPopupDismissed}
           onDismissPopup={() => setIsPopupDismissed(true)}
+          sidebarMode={sidebarMode}
+          probes={networkProbes.probes}
+          probeGeoJSON={networkProbes.probeGeoJSON}
+          selectedProbe={networkProbes.selectedProbe}
+          onSelectProbe={networkProbes.selectProbe}
+          onClearProbeSelection={networkProbes.clearSelection}
         />
       </div>
 
       <MapSidebar
+        sidebarMode={sidebarMode}
+        onSetSidebarMode={setSidebarMode}
         overview={overview}
         selectedIncidentId={selectedIncidentId}
         onSelectIncident={handleSelectIncident}
@@ -195,6 +218,10 @@ function DashboardPage() {
         isLoading={overviewQuery.isPending}
         isError={overviewQuery.isError}
         errorMessage={overviewQuery.error?.message}
+        probes={networkProbes.probes}
+        selectedProbeId={networkProbes.selectedProbeId}
+        onSelectProbe={networkProbes.selectProbe}
+        probeSummary={networkProbes.summary}
       />
 
       <div className="absolute right-4 top-4 z-10">
@@ -220,6 +247,13 @@ interface MapCanvasProps {
   onBriefingNext: () => void;
   isPopupDismissed: boolean;
   onDismissPopup: () => void;
+  // Probe / mode props
+  sidebarMode: SidebarMode;
+  probes: NetworkProbe[];
+  probeGeoJSON: GeoJSON.FeatureCollection<GeoJSON.Point>;
+  selectedProbe: NetworkProbe | null;
+  onSelectProbe: (probeId: string) => void;
+  onClearProbeSelection: () => void;
 }
 
 function MapCanvas({
@@ -238,13 +272,21 @@ function MapCanvas({
   onBriefingNext,
   isPopupDismissed,
   onDismissPopup,
+  sidebarMode,
+  probes,
+  probeGeoJSON,
+  selectedProbe,
+  onSelectProbe,
+  onClearProbeSelection,
 }: MapCanvasProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapboxMap | null>(null);
   const popupCardRef = useRef<HTMLDivElement | null>(null);
   const hasLayerHandlersRef = useRef(false);
+  const hasProbeHandlersRef = useRef(false);
   const hasFittedDatasetRef = useRef(false);
   const onSelectIncidentRef = useRef(onSelectIncident);
+  const onSelectProbeRef = useRef(onSelectProbe);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const selectedGeometry = getFeatureGeometry(overview, selectedIncident?.id ?? null);
@@ -253,6 +295,7 @@ function MapCanvas({
     : null;
 
   onSelectIncidentRef.current = onSelectIncident;
+  onSelectProbeRef.current = onSelectProbe;
 
   useEffect(() => {
     let cancelled = false;
@@ -377,6 +420,7 @@ function MapCanvas({
       mapRef.current?.remove();
       mapRef.current = null;
       hasLayerHandlersRef.current = false;
+      hasProbeHandlersRef.current = false;
       hasFittedDatasetRef.current = false;
     };
   }, []);
@@ -470,6 +514,176 @@ function MapCanvas({
     }
   }, [overview, status]);
 
+  // --- Probe layers setup ------------------------------------------------
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || status !== "ready") return;
+
+    const source = map.getSource(PROBES_SOURCE_ID) as GeoJSONSource | undefined;
+
+    if (!source) {
+      map.addSource(PROBES_SOURCE_ID, {
+        type: "geojson",
+        data: probeGeoJSON,
+      });
+
+      // Pulsing outer ring (online / degraded only)
+      map.addLayer({
+        id: PROBES_PULSE_LAYER_ID,
+        type: "circle",
+        source: PROBES_SOURCE_ID,
+        filter: ["!=", ["get", "status"], "offline"],
+        paint: {
+          "circle-radius": 16,
+          "circle-color": ["get", "fillColor"],
+          "circle-opacity": 0.18,
+          "circle-stroke-width": 0,
+        },
+        layout: {
+          visibility: sidebarMode === "network" ? "visible" : "none",
+        },
+      });
+
+      // Solid inner circle
+      map.addLayer({
+        id: PROBES_CIRCLE_LAYER_ID,
+        type: "circle",
+        source: PROBES_SOURCE_ID,
+        paint: {
+          "circle-radius": 7,
+          "circle-color": ["get", "fillColor"],
+          "circle-stroke-color": "#ffffff",
+          "circle-stroke-width": 2,
+          "circle-opacity": 1,
+        },
+        layout: {
+          visibility: sidebarMode === "network" ? "visible" : "none",
+        },
+      });
+
+      // Text label
+      map.addLayer({
+        id: PROBES_LABEL_LAYER_ID,
+        type: "symbol",
+        source: PROBES_SOURCE_ID,
+        layout: {
+          "text-field": ["get", "label"],
+          "text-size": 10,
+          "text-offset": [0, 1.8],
+          "text-anchor": "top",
+          "text-max-width": 12,
+          visibility: sidebarMode === "network" ? "visible" : "none",
+        },
+        paint: {
+          "text-color": "#ffffff",
+          "text-halo-color": "rgba(0,0,0,0.7)",
+          "text-halo-width": 1.2,
+        },
+      });
+    } else {
+      source.setData(probeGeoJSON);
+    }
+
+    // Click + hover handlers (one-time)
+    if (!hasProbeHandlersRef.current && map.getLayer(PROBES_CIRCLE_LAYER_ID)) {
+      map.on("click", PROBES_CIRCLE_LAYER_ID, (event) => {
+        const clickedId = event.features?.[0]?.properties?.id;
+        if (typeof clickedId === "string") {
+          onSelectProbeRef.current(clickedId);
+        }
+      });
+
+      map.on("mouseenter", PROBES_CIRCLE_LAYER_ID, () => {
+        map.getCanvas().style.cursor = "pointer";
+      });
+
+      map.on("mouseleave", PROBES_CIRCLE_LAYER_ID, () => {
+        map.getCanvas().style.cursor = "";
+      });
+
+      hasProbeHandlersRef.current = true;
+    }
+  }, [probeGeoJSON, status, sidebarMode]);
+
+  // --- Layer visibility toggling based on sidebar mode -------------------
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || status !== "ready") return;
+
+    const incidentLayers = [
+      INCIDENTS_FILL_LAYER_ID,
+      INCIDENTS_OUTLINE_LAYER_ID,
+      INCIDENTS_SELECTED_LAYER_ID,
+    ];
+    const probeLayers = [
+      PROBES_PULSE_LAYER_ID,
+      PROBES_CIRCLE_LAYER_ID,
+      PROBES_LABEL_LAYER_ID,
+    ];
+
+    for (const layerId of incidentLayers) {
+      if (map.getLayer(layerId)) {
+        map.setLayoutProperty(
+          layerId,
+          "visibility",
+          sidebarMode === "housing" ? "visible" : "none",
+        );
+      }
+    }
+
+    for (const layerId of probeLayers) {
+      if (map.getLayer(layerId)) {
+        map.setLayoutProperty(
+          layerId,
+          "visibility",
+          sidebarMode === "network" ? "visible" : "none",
+        );
+      }
+    }
+  }, [sidebarMode, status]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || status !== "ready" || sidebarMode !== "network") {
+      return;
+    }
+
+    if (!map.getLayer(PROBES_PULSE_LAYER_ID)) {
+      return;
+    }
+
+    let frameId = 0;
+
+    const animate = (timestamp: number) => {
+      const cycle = (timestamp % 1800) / 1800;
+      const radius = 14 + cycle * 10;
+      const opacity = 0.26 - cycle * 0.2;
+
+      map.setPaintProperty(PROBES_PULSE_LAYER_ID, "circle-radius", [
+        "match",
+        ["get", "status"],
+        "degraded",
+        radius - 2,
+        radius,
+      ]);
+      map.setPaintProperty(PROBES_PULSE_LAYER_ID, "circle-opacity", [
+        "match",
+        ["get", "status"],
+        "degraded",
+        Math.max(opacity * 0.8, 0.04),
+        Math.max(opacity, 0.05),
+      ]);
+
+      frameId = window.requestAnimationFrame(animate);
+    };
+
+    frameId = window.requestAnimationFrame(animate);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [sidebarMode, status, probeGeoJSON]);
+
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !map.getLayer(INCIDENTS_SELECTED_LAYER_ID)) {
@@ -510,6 +724,20 @@ function MapCanvas({
 
   useEffect(() => {
     const map = mapRef.current;
+    if (!map || status !== "ready" || sidebarMode !== "network" || !selectedProbe) {
+      return;
+    }
+
+    map.flyTo({
+      center: selectedProbe.lngLat,
+      zoom: 14.8,
+      duration: 900,
+      essential: true,
+    });
+  }, [selectedProbe, sidebarMode, status]);
+
+  useEffect(() => {
+    const map = mapRef.current;
     const container = mapContainerRef.current;
     const card = popupCardRef.current;
     if (!map || !container || !card || status !== "ready" || !selectedIncident) {
@@ -544,15 +772,19 @@ function MapCanvas({
   const overlayMessage =
     status === "error"
       ? errorMessage
-      : queryErrorMessage
-        ? "The incidents API returned an error."
-        : status === "loading"
-          ? "Initializing the Mapbox canvas."
-          : isQueryPending
-            ? "Loading Melissa detections and polygon overlays."
-            : !overview?.incidents.length
-              ? "No incidents available yet. Seed the Melissa dataset to draw polygons."
-              : null;
+      : status === "loading"
+        ? "Initializing the Mapbox canvas."
+        : sidebarMode === "network"
+          ? probes.length === 0
+            ? "No liveliness reporters are registered yet. Use the reporter app to enroll a facility."
+            : null
+          : queryErrorMessage
+            ? "The incidents API returned an error."
+            : isQueryPending
+              ? "Loading Melissa detections and polygon overlays."
+              : !overview?.incidents.length
+                ? "No incidents available yet. Seed the Melissa dataset to draw polygons."
+                : null;
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-background">
@@ -583,7 +815,7 @@ function MapCanvas({
         </div>
       ) : null}
 
-      {status === "ready" && !overlayMessage && selectedIncident && !isPopupDismissed ? (
+      {status === "ready" && !overlayMessage && selectedIncident && !isPopupDismissed && sidebarMode === "housing" ? (
         <div
           ref={popupCardRef}
           className="absolute z-20 w-80 max-w-[calc(100vw-1.5rem)] -translate-x-1/2 -translate-y-[calc(100%+1rem)]"
@@ -736,9 +968,108 @@ function MapCanvas({
         </div>
       ) : null}
 
+      {/* Probe info card — fixed position, top-right below stats bar */}
+      {status === "ready" && sidebarMode === "network" && selectedProbe ? (
+        <div className="absolute right-4 top-20 z-20 w-72">
+          <Card className="border-white/10 bg-background/92 shadow-[0_20px_70px_-35px_rgba(8,15,32,0.95)]">
+            <CardHeader className="pb-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground/65">
+                    Network Probe
+                  </p>
+                  <CardTitle className="mt-2 truncate text-base">
+                    {selectedProbe.label}
+                  </CardTitle>
+                  <CardDescription className="mt-1">
+                    {formatFacilityType(selectedProbe.facilityType)}
+                  </CardDescription>
+                </div>
+                <div className="flex flex-shrink-0 items-center gap-1.5">
+                  <span
+                    className={[
+                      "inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]",
+                      PROBE_STATUS_BADGE[selectedProbe.status],
+                    ].join(" ")}
+                  >
+                    {formatProbeStatus(selectedProbe.status)}
+                  </span>
+                  <button
+                    onClick={onClearProbeSelection}
+                    className="flex h-6 w-6 items-center justify-center rounded-lg text-muted-foreground/60 transition-colors hover:bg-muted hover:text-foreground"
+                    aria-label="Close probe info"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                      <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <MetricTile
+                  label="15m Uptime"
+                  value={formatUptimePct(selectedProbe.uptimePct)}
+                />
+                <MetricTile
+                  label="Last Seen"
+                  value={formatLastSeen(selectedProbe.lastSeen)}
+                />
+              </div>
+
+              <div className="rounded-2xl border border-border/70 bg-muted/60 p-3 space-y-2">
+                <div className="flex items-center justify-between gap-3 text-[11px]">
+                  <span className="text-muted-foreground">Status</span>
+                  <span className="font-medium text-foreground">
+                    {formatProbeStatus(selectedProbe.status)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3 text-[11px]">
+                  <span className="text-muted-foreground">Facility</span>
+                  <span className="font-medium text-foreground">
+                    {formatFacilityType(selectedProbe.facilityType)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3 text-[11px]">
+                  <span className="text-muted-foreground">Area</span>
+                  <span className="font-medium text-foreground">
+                    {selectedProbe.areaLabel}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-3 text-[11px]">
+                  <span className="text-muted-foreground">Coordinates</span>
+                  <span className="font-mono text-foreground">
+                    {selectedProbe.lngLat[1].toFixed(4)}, {selectedProbe.lngLat[0].toFixed(4)}
+                  </span>
+                </div>
+              </div>
+
+              {selectedProbe.status === "offline" ? (
+                <div className="rounded-2xl border border-red-500/25 bg-red-500/10 p-3">
+                  <p className="text-[11px] leading-[1.5] text-red-300">
+                    {selectedProbe.areaLabel} is likely without power. This facility
+                    has stopped reporting and should be treated as a probable local
+                    outage.
+                  </p>
+                </div>
+              ) : selectedProbe.status === "degraded" ? (
+                <div className="rounded-2xl border border-amber-500/25 bg-amber-500/10 p-3">
+                  <p className="text-[11px] leading-[1.5] text-amber-300">
+                    {selectedProbe.areaLabel} is showing intermittent connectivity.
+                    Power or upstream backhaul may be unstable, so keep monitoring
+                    for full outage conditions.
+                  </p>
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
+
       <div className="absolute bottom-8 right-8 rounded-full border border-white/10 bg-black/30 px-3 py-1.5 backdrop-blur-md">
         <p className="font-mono text-[10px] uppercase tracking-[0.25em] text-white/75">
-          Melissa polygon overlay
+          {sidebarMode === "network" ? "Network liveliness overlay" : "Melissa polygon overlay"}
         </p>
       </div>
     </div>
