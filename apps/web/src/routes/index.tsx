@@ -211,9 +211,16 @@ function Nav() {
           </Link>
         </div>
 
-        <Link to="/dashboard">
-          <Button size="sm">Open Dashboard</Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link to="/login">
+            <Button size="sm" variant="outline">
+              Sign In
+            </Button>
+          </Link>
+          <Link to="/signup">
+            <Button size="sm">Create Account</Button>
+          </Link>
+        </div>
       </div>
     </nav>
   );
@@ -256,17 +263,17 @@ function Hero() {
           </p>
 
           <div className="mt-10 flex flex-wrap items-center gap-4">
-            <Link to="/dashboard">
+            <Link to="/signup">
               <Button size="lg">
-                View Live Dashboard
+                Create Account
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="ml-1" data-icon="inline-end">
                   <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </Button>
             </Link>
-            <a href="#workflow">
-              <Button variant="outline" size="lg">How It Works</Button>
-            </a>
+            <Link to="/login">
+              <Button variant="outline" size="lg">Sign In</Button>
+            </Link>
           </div>
         </div>
 
@@ -572,17 +579,19 @@ function CtaSection() {
             </p>
 
             <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-              <Link to="/dashboard">
+              <Link to="/signup">
                 <Button size="lg">
-                  Explore the Dashboard
+                  Create Account
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="ml-1" data-icon="inline-end">
                     <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </Button>
               </Link>
-              <Button variant="outline" size="lg">
-                Request a Briefing
-              </Button>
+              <Link to="/login">
+                <Button variant="outline" size="lg">
+                  Sign In
+                </Button>
+              </Link>
             </div>
           </div>
         </div>

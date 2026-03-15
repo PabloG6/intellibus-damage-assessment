@@ -101,6 +101,7 @@ function DashboardPage() {
   const [fitExtentSerial, setFitExtentSerial] = useState(0);
   const [isBriefingActive, setIsBriefingActive] = useState(false);
   const [briefingIndex, setBriefingIndex] = useState(0);
+  const [isPopupDismissed, setIsPopupDismissed] = useState(false);
 
   const briefingQueue = overview ? getBriefingQueue(overview.incidents) : [];
 
@@ -127,6 +128,7 @@ function DashboardPage() {
 
   function handleSelectIncident(incidentId: string) {
     setIsBriefingActive(false);
+    setIsPopupDismissed(false);
     setSelectedIncidentId(incidentId);
     setSelectionSerial((current) => current + 1);
   }
@@ -139,6 +141,7 @@ function DashboardPage() {
     if (briefingQueue.length === 0) return;
     setBriefingIndex(0);
     setIsBriefingActive(true);
+    setIsPopupDismissed(false);
     setSelectedIncidentId(briefingQueue[0].id);
     setSelectionSerial((current) => current + 1);
   }
@@ -174,6 +177,8 @@ function DashboardPage() {
           briefingIndex={briefingIndex}
           onBriefingPrev={handleBriefingPrev}
           onBriefingNext={handleBriefingNext}
+          isPopupDismissed={isPopupDismissed}
+          onDismissPopup={() => setIsPopupDismissed(true)}
         />
       </div>
 
@@ -213,6 +218,8 @@ interface MapCanvasProps {
   briefingIndex: number;
   onBriefingPrev: () => void;
   onBriefingNext: () => void;
+  isPopupDismissed: boolean;
+  onDismissPopup: () => void;
 }
 
 function MapCanvas({
@@ -229,6 +236,8 @@ function MapCanvas({
   briefingIndex,
   onBriefingPrev,
   onBriefingNext,
+  isPopupDismissed,
+  onDismissPopup,
 }: MapCanvasProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapboxMap | null>(null);
@@ -574,15 +583,15 @@ function MapCanvas({
         </div>
       ) : null}
 
-      {status === "ready" && !overlayMessage && selectedIncident ? (
+      {status === "ready" && !overlayMessage && selectedIncident && !isPopupDismissed ? (
         <div
           ref={popupCardRef}
           className="absolute z-20 w-80 max-w-[calc(100vw-1.5rem)] -translate-x-1/2 -translate-y-[calc(100%+1rem)]"
         >
           <Card className="border-white/10 bg-background/92 shadow-[0_20px_70px_-35px_rgba(8,15,32,0.95)]">
             <CardHeader className="pb-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
                   <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground/65">
                     {isBriefingActive ? "Claim Triage Tour" : "Focused Detection"}
                   </p>
@@ -593,12 +602,23 @@ function MapCanvas({
                     {selectedIncident.id}
                   </CardDescription>
                 </div>
-                <span
-                  className="inline-flex rounded-full border border-border/70 bg-muted px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-foreground"
-                  style={{ color: SEVERITY_FILL[selectedIncident.severity] }}
-                >
-                  {formatSeverity(selectedIncident.severity)}
-                </span>
+                <div className="flex flex-shrink-0 items-center gap-1.5">
+                  <span
+                    className="inline-flex rounded-full border border-border/70 bg-muted px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-foreground"
+                    style={{ color: SEVERITY_FILL[selectedIncident.severity] }}
+                  >
+                    {formatSeverity(selectedIncident.severity)}
+                  </span>
+                  <button
+                    onClick={onDismissPopup}
+                    className="flex h-6 w-6 items-center justify-center rounded-lg text-muted-foreground/60 transition-colors hover:bg-muted hover:text-foreground"
+                    aria-label="Close popup"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                      <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             </CardHeader>
 
